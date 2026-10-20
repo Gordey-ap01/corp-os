@@ -22,7 +22,7 @@ def setup(vault, executable):
     settings = vault / ".obsidian"
     backup = state / "obsidian-backups" / str(time.time_ns())
     backup.mkdir(parents=True)
-    for name in ["appearance.json", "bookmarks.json", "workspace.json"]:
+    for name in ["app.json", "appearance.json", "bookmarks.json", "workspace.json"]:
         if (settings / name).is_file():
             shutil.copy2(settings / name, backup / name)
     snippet = settings / "snippets/personal-corp.css"
@@ -34,6 +34,9 @@ def setup(vault, executable):
     if "personal-corp" not in enabled:
         enabled.append("personal-corp")
     corp.write_json(settings / "appearance.json", appearance)
+    preferences = corp.read_json(settings / "app.json") if (settings / "app.json").exists() else {}
+    preferences["defaultViewMode"] = "preview"
+    corp.write_json(settings / "app.json", preferences)
     bookmarks = corp.read_json(settings / "bookmarks.json") if (settings / "bookmarks.json").exists() else {"items": []}
     group_name = "Штаб — Gordey_ap01"
     if not any(item.get("title") == group_name for item in bookmarks["items"]):
