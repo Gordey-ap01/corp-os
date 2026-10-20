@@ -1,0 +1,11 @@
+/* Portfolio board — Gordey_ap01 */
+.portfolio-board { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; align-items:start; }
+.portfolio-board[hidden], .project-list[hidden] { display:none; }
+.board-lane { background:var(--soft); padding:16px; border-radius:4px; min-width:0; }
+.board-lane h2 { font-size:21px; margin:0; }
+.board-lane .project-card { display:block; width:100%; padding:16px; margin:12px 0; }
+.board-lane .project-card h3 { font-size:20px; overflow-wrap:anywhere; }
+.board-lane .project-card p { margin-bottom:0; }
+.focus-actions [aria-pressed="true"] { background:var(--ink); color:var(--white); }
+#review-shortlist p { padding-bottom:12px; border-bottom:1px solid var(--line); }
+@media(max-width:1000px) { .portfolio-board { grid-template-columns:1fr; } }

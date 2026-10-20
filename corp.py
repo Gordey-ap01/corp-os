@@ -205,7 +205,8 @@ def dashboard(state):
     payload = {"config": config, "inventory": inv, "tasks": tasks, "observations": observations, "built_at": now(), "next": next_task(tasks), "runtime": {"root": ROOT.as_posix(), "command": command}}
     encoded = json.dumps(payload, ensure_ascii=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     template = (ROOT / "ui/index.html").read_text(encoding="utf-8")
-    result = template.replace("/*__STYLE__*/", (ROOT / "ui/style.css").read_text(encoding="utf-8")).replace("/*__APP__*/", (ROOT / "ui/app.js").read_text(encoding="utf-8")).replace("__CORP_DATA__", encoded)
+    styles = "\n".join((ROOT / "ui" / name).read_text(encoding="utf-8") for name in ["style.css", "board.css"])
+    result = template.replace("/*__STYLE__*/", styles).replace("/*__APP__*/", (ROOT / "ui/app.js").read_text(encoding="utf-8")).replace("__CORP_DATA__", encoded)
     atomic_write(state / "dashboard.html", result)
     return str(state / "dashboard.html")
 
@@ -235,6 +236,8 @@ def main():
     p.add_argument("--portfolio", required=True)
     for name in ["refresh", "doctor", "daily", "dashboard", "retro"]:
         sub.add_parser(name)
+    p = sub.add_parser("obsidian", help="Обновить отдельное представление в существующем хранилище")
+    p.add_argument("--vault", type=Path)
     p = sub.add_parser("task")
     actions = p.add_subparsers(dest="action", required=True)
     actions.add_parser("list")
@@ -269,6 +272,11 @@ def main():
             value = doctor(state)
             print(json.dumps(value, ensure_ascii=False, indent=2))
             return 0 if all(c["ok"] for c in value["checks"]) else 1
+        elif args.command == "obsidian":
+            from obsidian_hq import sync
+            result = sync(state, args.vault)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 1 if result["conflicts"] else 0
         else:
             print({"daily": daily, "dashboard": dashboard, "retro": retro}[args.command](state))
     except (OSError, ValueError, KeyError, TypeError) as exc:

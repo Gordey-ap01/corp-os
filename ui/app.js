@@ -6,6 +6,8 @@ const localUrl=p=>{const s=String(p).replaceAll('\\','/');return 'file:///'+s.sp
 const safeUrl=p=>{try{const u=new URL(p);return ['http:','https:','file:'].includes(u.protocol)?u.href:null}catch{return null}};
 function link(label,target,cls=''){const a=el('a',cls,label);const url=/^[A-Za-z]:[\\/]/.test(target)?localUrl(target):safeUrl(target);if(url){a.href=url;a.target='_blank';a.rel='noopener noreferrer'}else{a.removeAttribute('href')}return a}
 const projects=data.inventory.projects;
+function obsidianLink(label,file){const a=el('a','secondary',label);a.href='obsidian://open?path='+encodeURIComponent(data.config.obsidian.vault.replaceAll('\\','/')+'/Штаб/'+file);return a}
+if(data.config.obsidian?.vault){$('#obsidian-entry').append(obsidianLink('Открыть штаб в Obsidian ↗','Сегодня.md'),obsidianLink('Записать мысль','Входящие.md'),obsidianLink('Читать обзоры','Обзоры.md'));}
 const taskLabels={ready:'Готово к работе',in_progress:'В работе',review:'На вашей проверке',done:'Принято владельцем',blocked:'Ожидает зависимости'};
 function switchView(id){document.querySelectorAll('.view').forEach(n=>n.hidden=n.id!==id);document.querySelectorAll('.nav').forEach(n=>{n.classList.toggle('active',n.dataset.view===id);n.setAttribute('aria-current',n.dataset.view===id?'page':'false')});window.scrollTo({top:0,behavior:'instant'})}
 document.querySelectorAll('.nav').forEach(n=>n.addEventListener('click',()=>switchView(n.dataset.view)));
@@ -17,9 +19,13 @@ const values=[[projects.length,'проектов в реестре'],[data.inven
 values.forEach(([num,label])=>{const n=el('div','stat');n.append(el('b','',String(num)),el('span','',label));$('#stats').append(n)});
 $('#focus-title').textContent=data.next?.title||'Оценить подготовленные результаты';
 $('#focus-criteria').textContent=data.next?.acceptance||'Открыть материал и оставить короткое замечание.';
-const pilot=data.config.resources.find(r=>r.kind==='pilot');
-$('#pilot-open').disabled=!pilot;
-$('#pilot-open').addEventListener('click',()=>{if(pilot)window.open(localUrl(pilot.path),'_blank','noopener')});
+const nextEvidence=data.next?.evidence?.[0];
+const nextResource=nextEvidence||data.next?.reference;
+$('#pilot-open').textContent=nextResource?'Открыть материал ↗':'Посмотреть очередь →';
+$('#pilot-open').addEventListener('click',()=>{if(nextResource)window.open(localUrl(nextResource),'_blank','noopener');else switchView('tasks')});
+data.tasks.filter(t=>t.status==='review').forEach(t=>{const row=el('p','',t.title);if(t.evidence?.[0])row.append(document.createTextNode(' '),link('Открыть ↗',t.evidence[0]));$('#review-shortlist').append(row)});
+if(!$('#review-shortlist').children.length)$('#review-shortlist').append(el('p','','Нет результатов, ожидающих вашей проверки.'));
+$('#all-results').addEventListener('click',()=>switchView('tasks'));
 const resume=`Продолжи Personal Corp 3 из ${data.runtime.root}. Прочитай AGENTS.md, выполни ${data.runtime.command} daily. Используй существующий реестр портфеля, сохрани доказательство результата и обнови очередь. Не присваивай мою приёмку автоматически.`;
 $('#resume').textContent=resume;
 $('#update-command').textContent=data.runtime.command+' dashboard';
@@ -35,6 +41,26 @@ $('#close-dialog').addEventListener('click',()=>$('#project-dialog').close());
 $('#project-dialog').addEventListener('click',e=>{if(e.target===$('#project-dialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close()}});
 function renderProjects(){const term=$('#search').value.toLocaleLowerCase('ru');const mode=$('#availability').value;const found=projects.filter(p=>{const text=[p.label,p.path,p.stage,p.decision].join(' ').toLocaleLowerCase('ru');return text.includes(term)&&(mode==='all'||mode==='local'&&p.folder_available_now===true||mode==='missing'&&p.folder_available_now===false||mode==='cloud'&&!p.path)});const list=$('#project-list');list.replaceChildren();$('#project-count').textContent=`Показано ${found.length} из ${projects.length}`;found.forEach(p=>{const card=el('button','project-card');const available=p.folder_available_now;card.append(el('span',available===false?'tag warning':'tag',!p.path?'Облачный':available?'Папка доступна':'Папка не найдена'),el('h3','',p.label),el('p','',p.stage||'Этап неизвестен'),el('span','path',p.path||'ChatGPT · облачный проект'));card.addEventListener('click',()=>details(p));list.append(card)});if(!found.length)list.append(el('p','empty','Проектов по этому запросу нет. Измените поиск или фильтр.'))}
 $('#search').addEventListener('input',renderProjects);$('#availability').addEventListener('change',renderProjects);renderProjects();
+const boardButton=el('button','secondary','Доска обзора');
+const listButton=el('button','secondary','Список');
+const viewTools=el('div','focus-actions');
+viewTools.append(listButton,boardButton);
+if(data.config.obsidian?.vault)viewTools.append(obsidianLink('Моя доска в Obsidian ↗','Проекты/Портфель.base'));
+$('#projects .toolbar').before(viewTools);
+let boardMode=false;
+const board=el('div','portfolio-board');
+board.hidden=true;
+$('#project-list').after(board);
+function renderBoard(){
+ board.replaceChildren();
+ const groups=[['Есть ограничения',p=>Boolean(p.paused_scopes?.length)],['Проверить доступ',p=>!p.paused_scopes?.length&&p.folder_available_now===false],['Разобрать по обзору',p=>!p.paused_scopes?.length&&p.folder_available_now!==false]];
+ const term=$('#search').value.toLocaleLowerCase('ru'), mode=$('#availability').value;
+ for(const [title,match] of groups){const lane=el('section','board-lane');lane.append(el('h2','',title));const found=projects.filter(p=>match(p)&&[p.label,p.path,p.stage,p.decision].join(' ').toLocaleLowerCase('ru').includes(term)&&(mode==='all'||mode==='local'&&p.folder_available_now===true||mode==='missing'&&p.folder_available_now===false||mode==='cloud'&&!p.path));lane.append(el('p','fine',`${found.length} проектов`));for(const p of found){const card=el('button','project-card');card.append(el('h3','',p.label),el('p','',p.next_goals_proposed?.[0]||p.stage||'Следующий шаг не определён'));card.addEventListener('click',()=>details(p));lane.append(card)}if(!found.length)lane.append(el('p','fine','В этой группе пока нет проектов.'));board.append(lane)}
+}
+function setProjectView(isBoard){boardMode=isBoard;$('#project-list').hidden=isBoard;board.hidden=!isBoard;boardButton.setAttribute('aria-pressed',String(isBoard));listButton.setAttribute('aria-pressed',String(!isBoard));if(isBoard)renderBoard()}
+boardButton.addEventListener('click',()=>setProjectView(true));listButton.addEventListener('click',()=>setProjectView(false));
+$('#search').addEventListener('input',()=>{if(boardMode)renderBoard()});$('#availability').addEventListener('change',()=>{if(boardMode)renderBoard()});
+setProjectView(false);
 data.inventory.github.forEach(r=>$('#repos').append(link(`${r.name} · ${r.visibility==='PRIVATE'?'закрытый':'публичный'}`,r.url)));
 for(const status of ['in_progress','ready','review','blocked','done']){const tasks=data.tasks.filter(t=>t.status===status);if(!tasks.length)continue;const group=el('section','task-group');group.append(el('h2','',`${taskLabels[status]} · ${tasks.length}`));tasks.forEach(t=>{const card=el('article','task-card');card.append(el('div','task-meta',`${t.id} / ${t.department} / ${t.assignee==='owner'?'владелец':'агент'} / приоритет ${t.priority}`),el('h3','',t.title),el('p','',t.acceptance));if(t.history?.at(-1)?.note)card.append(el('p','fine',t.history.at(-1).note));t.evidence?.forEach(p=>card.append(link('Открыть результат ↗',p,'evidence')));group.append(card)});$('#task-list').append(group)}
 data.config.resources.forEach(r=>$('#resources').append(link(r.label,r.path||r.url)));

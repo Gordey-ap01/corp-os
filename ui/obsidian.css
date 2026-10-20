@@ -1,0 +1,42 @@
+/* Personal Corp — Gordey_ap01. Scoped to HQ notes; existing notes keep their theme. */
+.personal-corp {
+  --hq-ink: #214c40;
+  --hq-soft: #eef2e7;
+  --hq-line: #cbd7c8;
+  --link-color: #346e52;
+  --link-unresolved-color: #346e52;
+  --h1-color: var(--hq-ink);
+  --h2-color: var(--hq-ink);
+  --file-line-width: 1040px;
+}
+.theme-dark .personal-corp {
+  --hq-ink: #d0e7c8;
+  --hq-soft: #26372f;
+  --hq-line: #405449;
+  --link-color: #bed795;
+  --link-unresolved-color: #bed795;
+}
+.personal-corp .inline-title { display: none; }
+.personal-corp .metadata-container { margin-bottom: 16px; }
+.workspace-leaf-content[data-type="markdown"]:has(.personal-corp-page) .metadata-container { display:none; }
+.personal-corp h1 { font: 500 44px/1.12 Georgia, serif; letter-spacing: -.8px; margin: 24px 0 16px; }
+.personal-corp h2 { font-size: 22px; margin-top: 32px; padding-bottom: 8px; border-bottom: 1px solid var(--hq-line); }
+.personal-corp .callout[data-callout="abstract"] {
+  --callout-color: 47, 89, 62;
+  border: 1px solid var(--hq-line);
+  background: var(--hq-soft);
+  padding: 20px 24px;
+  border-radius: 8px;
+}
+.personal-corp .callout-title { font-size: 16px; }
+.personal-corp .callout-content { font-size: 16px; line-height: 1.7; }
+.personal-corp .internal-link { text-underline-offset: 4px; }
+.personal-corp .markdown-preview-section > div:first-child p a { font-size: 13px; }
+.personal-corp .bases-embed { border: 1px solid var(--hq-line); border-radius: 8px; overflow: hidden; }
+.personal-corp .bases-cards-item { border-color: var(--hq-line); }
+.personal-corp blockquote { border-color: var(--hq-line); }
+.personal-corp .markdown-preview-section { padding-bottom: 60px; }
+@media(max-width: 600px) {
+  .personal-corp h1 { font-size: 34px; }
+  .personal-corp .callout[data-callout="abstract"] { padding: 12px 16px; }
+}
